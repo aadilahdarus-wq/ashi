@@ -1,26 +1,78 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --orange: #e07000;
+  --orange-pale: #fff4ec;
+  --orange-border: #fecdaa;
+  --bg: #f5f6f7;
+  --surface: #ffffff;
+  --surface-2: #f0f1f3;
+  --border: #e3e5e8;
+  --text: #111827;
+  --text-2: #374151;
+  --text-3: #6b7280;
+  --text-4: #9ca3af;
+  --green: #16a34a;
+  --green-pale: #f0fdf4;
+  --green-text: #15803d;
+  --red: #dc2626;
+  --red-pale: #fef2f2;
+  --red-text: #b91c1c;
+
+  --sidebar-width: 232px;
+  --topbar-height: 60px;
+}
+
+.dark {
+  --bg: #0f1117;
+  --surface: #1a1d23;
+  --surface-2: #23262e;
+  --border: #2d3139;
+  --text: #f3f4f6;
+  --text-2: #d1d5db;
+  --text-3: #9ca3af;
+  --text-4: #6b7280;
+  --orange-pale: rgba(224, 112, 0, 0.12);
+  --orange-border: rgba(224, 112, 0, 0.3);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-orange: var(--orange);
+  --color-orange-pale: var(--orange-pale);
+  --color-orange-border: var(--orange-border);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-text-4: var(--text-4);
+  --color-green: var(--green);
+  --color-green-pale: var(--green-pale);
+  --color-green-text: var(--green-text);
+  --color-red: var(--red);
+  --color-red-pale: var(--red-pale);
+  --color-red-text: var(--red-text);
+  --font-sans: var(--font-plus-jakarta);
+  --font-mono: var(--font-dm-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-plus-jakarta), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
