@@ -1,5 +1,5 @@
-import EmptyPage from "@/components/pages/EmptyPage";
+import { ClientProfileForm } from "@/components/client-profile/ClientProfileForm";
 
 export default function ClientProfilePage() {
-  return <EmptyPage />;
+  return <ClientProfileForm />;
 }
