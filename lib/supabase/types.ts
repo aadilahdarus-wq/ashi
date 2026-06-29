@@ -31,3 +31,19 @@ export type ClientInsert = Omit<Client, "id" | "created_at"> & {
 export type UtmLinkInsert = Omit<UtmLink, "id" | "created_at"> & {
   id?: string;
 };
+
+export type SavedCopy = {
+  id: string;
+  client_id: string | null;
+  copy_type: "headline" | "description";
+  text: string;
+  category: string | null;
+  campaign: string | null;
+  char_count: number | null;
+  score: string | null;
+  created_at: string;
+};
+
+export type SavedCopyInsert = Omit<SavedCopy, "id" | "created_at"> & {
+  id?: string;
+};

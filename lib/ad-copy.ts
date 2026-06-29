@@ -1,3 +1,8 @@
+import type {
+  DescriptionStyle,
+  HeadlineCategory,
+} from "@/lib/copy-categories";
+
 export type CampaignType = "RSA" | "PMax" | "Meta" | "LinkedIn";
 
 export type CampaignName =
@@ -27,6 +32,9 @@ export type GeneratedCopy = {
   label: string;
   text: string;
   score: ScoreLabel;
+  hasBannedWord?: boolean;
+  category?: HeadlineCategory;
+  style?: DescriptionStyle;
 };
 
 const bannedWords = ["guaranteed", "cheap", "free translation"];

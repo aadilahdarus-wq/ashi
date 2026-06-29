@@ -16,6 +16,6 @@ export type CopyScore = "Strong" | "Good" | "Over limit";
 
 export function getCopyScore(text: string, charLimit: number): CopyScore {
   if (text.length > charLimit) return "Over limit";
-  if (text.length >= charLimit - 2) return "Strong";
+  if (text.length < charLimit * 0.9) return "Strong";
   return "Good";
 }

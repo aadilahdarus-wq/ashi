@@ -2,18 +2,23 @@
 
 import { useMemo, useState } from "react";
 import {
-  fetchGeneratedHeadlines,
+  fetchGeneratedCopy,
+  hasBannedWordViolation,
+  mapDescriptionResults,
   mapHeadlineResults,
 } from "@/lib/api-client";
 import {
-  generateCopy,
-  hasBestPracticeViolation,
-  type Angle,
-  type CampaignName,
-  type CampaignType,
-  type GeneratedCopy,
-  type GenerateMode,
-  type Goal,
+  headlineCategoryStyles,
+  type HeadlineCategory,
+} from "@/lib/copy-categories";
+import { saveCopyToBank } from "@/lib/saved-copy";
+import type {
+  Angle,
+  CampaignName,
+  CampaignType,
+  GeneratedCopy,
+  GenerateMode,
+  Goal,
 } from "@/lib/ad-copy";
 
 const campaignTypes: CampaignType[] = ["RSA", "PMax", "Meta", "LinkedIn"];
@@ -44,6 +49,26 @@ const defaultPersonas = [
   "Legal Professionals",
   "Conference Organisers",
 ];
+
+function LoadingSpinner() {
+  return (
+    <div
+      className="h-8 w-8 animate-spin rounded-full border-2 border-orange border-t-transparent"
+      aria-hidden="true"
+    />
+  );
+}
+
+function CategoryBadge({ category }: { category: HeadlineCategory }) {
+  const config = headlineCategoryStyles[category];
+  return (
+    <span
+      className={`inline-flex shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${config.className}`}
+    >
+      {config.label}
+    </span>
+  );
+}
 
 function CharacterBar({
   text,
@@ -109,18 +134,32 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function ResultRow({
+function HeadlineResultRow({
   item,
   maxChars,
+  selected,
+  onToggle,
 }: {
   item: GeneratedCopy;
   maxChars: number;
+  selected: boolean;
+  onToggle: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-border px-5 py-4 last:border-b-0 sm:flex-row sm:items-center">
-      <span className="w-8 shrink-0 text-[12px] font-semibold text-text-3">
-        {item.label}
-      </span>
+    <div className="flex flex-col gap-3 border-b border-border px-5 py-4 last:border-b-0 lg:flex-row lg:items-center">
+      <div className="flex items-center gap-2 shrink-0">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggle}
+          className="h-4 w-4 rounded border-border text-orange focus:ring-orange"
+          aria-label={`Select ${item.label}`}
+        />
+        <span className="w-8 text-[12px] font-semibold text-text-3">
+          {item.label}
+        </span>
+        {item.category && <CategoryBadge category={item.category} />}
+      </div>
       <p className="min-w-0 flex-1 text-[13px] font-medium text-text">
         {item.text}
       </p>
@@ -131,25 +170,31 @@ function ResultRow({
   );
 }
 
-function ResultsSection({
-  title,
-  items,
+function DescriptionResultRow({
+  item,
   maxChars,
 }: {
-  title: string;
-  items: GeneratedCopy[];
+  item: GeneratedCopy;
   maxChars: number;
 }) {
-  if (items.length === 0) return null;
-
   return (
-    <div>
-      <div className="border-b border-border px-5 py-3">
-        <h3 className="text-[13px] font-semibold text-text">{title}</h3>
+    <div className="flex flex-col gap-3 border-b border-border px-5 py-4 last:border-b-0 lg:flex-row lg:items-center">
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="w-8 text-[12px] font-semibold text-text-3">
+          {item.label}
+        </span>
+        {item.style && (
+          <span className="inline-flex rounded-md bg-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-3">
+            {item.style}
+          </span>
+        )}
       </div>
-      {items.map((item) => (
-        <ResultRow key={item.id} item={item} maxChars={maxChars} />
-      ))}
+      <p className="min-w-0 flex-1 text-[13px] font-medium text-text">
+        {item.text}
+      </p>
+      <CharacterBar text={item.text} maxChars={maxChars} />
+      <ScoreBadge score={item.score} />
+      <CopyButton text={item.text} />
     </div>
   );
 }
@@ -167,12 +212,27 @@ export function GenerateTab() {
     headlines: GeneratedCopy[];
     descriptions: GeneratedCopy[];
   } | null>(null);
+  const [selectedHeadlines, setSelectedHeadlines] = useState<Set<string>>(
+    new Set(),
+  );
+  const [lastMode, setLastMode] = useState<GenerateMode>("all");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [copyAllDone, setCopyAllDone] = useState(false);
+  const [bankMessage, setBankMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const showViolation = useMemo(
-    () => (results ? hasBestPracticeViolation(results.headlines) : false),
+  const visibleItems = useMemo(
+    () => [
+      ...(results?.headlines ?? []),
+      ...(results?.descriptions ?? []),
+    ],
     [results],
+  );
+
+  const showViolation = useMemo(
+    () => hasBannedWordViolation(visibleItems),
+    [visibleItems],
   );
 
   function addPersona() {
@@ -186,53 +246,84 @@ export function GenerateTab() {
     setPersonas((current) => current.filter((persona) => persona !== value));
   }
 
+  function toggleHeadline(id: string) {
+    setSelectedHeadlines((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   async function handleGenerate(mode: GenerateMode) {
     setIsGenerating(true);
     setError(null);
+    setBankMessage(null);
+    setLastMode(mode);
+    setSelectedHeadlines(new Set());
 
     try {
-      if (mode === "descriptions") {
-        setResults(
-          generateCopy({
-            campaign,
-            mode,
-            headlineMax,
-            descriptionMax,
-          }),
-        );
-        return;
-      }
-
-      const headlines = await fetchGeneratedHeadlines({
+      const response = await fetchGeneratedCopy({
         campaign,
         personas,
         angle,
         goal,
-        charLimit: headlineMax,
+        campaignType,
+        headlineLimit: headlineMax,
+        descriptionLimit: descriptionMax,
       });
 
-      const mappedHeadlines = mapHeadlineResults(headlines);
+      const headlines = mapHeadlineResults(response.headlines);
+      const descriptions = mapDescriptionResults(response.descriptions);
 
-      if (mode === "all") {
-        const mockDescriptions = generateCopy({
-          campaign,
-          mode: "descriptions",
-          headlineMax,
-          descriptionMax,
-        }).descriptions;
-
-        setResults({
-          headlines: mappedHeadlines,
-          descriptions: mockDescriptions,
-        });
-        return;
+      if (mode === "headlines") {
+        setResults({ headlines, descriptions: [] });
+      } else if (mode === "descriptions") {
+        setResults({ headlines: [], descriptions });
+      } else {
+        setResults({ headlines, descriptions });
       }
-
-      setResults({ headlines: mappedHeadlines, descriptions: [] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate copy");
     } finally {
       setIsGenerating(false);
+    }
+  }
+
+  async function handleCopyAll() {
+    if (!results?.headlines.length) return;
+    const text = results.headlines.map((item) => item.text).join("\n");
+    await navigator.clipboard.writeText(text);
+    setCopyAllDone(true);
+    window.setTimeout(() => setCopyAllDone(false), 2000);
+  }
+
+  async function handleSaveToBank() {
+    if (!results?.headlines.length || selectedHeadlines.size === 0) return;
+
+    setIsSaving(true);
+    setError(null);
+    setBankMessage(null);
+
+    try {
+      const items = results.headlines
+        .filter((item) => selectedHeadlines.has(item.id))
+        .map((item) => ({
+          copyType: "headline" as const,
+          text: item.text,
+          category: item.category ?? null,
+          campaign,
+          charCount: item.text.length,
+          score: item.score,
+        }));
+
+      await saveCopyToBank(items);
+      setBankMessage(`Saved ${items.length} headline${items.length === 1 ? "" : "s"} to bank`);
+      setSelectedHeadlines(new Set());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save to bank");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -432,7 +523,7 @@ export function GenerateTab() {
             onClick={() => handleGenerate("descriptions")}
             className={`w-full rounded-lg bg-[#2563EB] px-4 py-2.5 text-[13px] font-medium text-white transition-opacity ${buttonDisabledClass}`}
           >
-            ✦ Descriptions Only
+            {isGenerating ? "Generating..." : "✦ Descriptions Only"}
           </button>
           <button
             type="button"
@@ -452,14 +543,22 @@ export function GenerateTab() {
           </div>
         )}
 
-        {isGenerating && !results ? (
-          <div className="flex min-h-[420px] items-center justify-center p-8 text-center">
+        {bankMessage && (
+          <div className="border-b border-green/20 bg-green-pale px-5 py-3">
+            <p className="text-[13px] font-medium text-green-text">{bankMessage}</p>
+          </div>
+        )}
+
+        {isGenerating ? (
+          <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 p-8 text-center">
+            <LoadingSpinner />
             <div>
               <p className="text-[15px] font-semibold text-text">
-                Generating headlines...
+                Generating copy...
               </p>
               <p className="mt-2 text-[13px] text-text-3">
-                Claude is writing RSA copy for {campaign}.
+                Claude is writing 15 RSA headlines and 4 descriptions for{" "}
+                {campaign}.
               </p>
             </div>
           </div>
@@ -476,25 +575,90 @@ export function GenerateTab() {
           </div>
         ) : (
           <>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+              <p className="text-[13px] font-medium text-text-2">
+                Generated results
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {results.headlines.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleCopyAll}
+                      className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-medium text-text-2 transition-colors hover:bg-surface-2"
+                    >
+                      {copyAllDone ? "Copied!" : "Copy All"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSaving || selectedHeadlines.size === 0}
+                      onClick={handleSaveToBank}
+                      className="rounded-lg bg-orange px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {isSaving
+                        ? "Saving..."
+                        : `Save to Bank${selectedHeadlines.size > 0 ? ` (${selectedHeadlines.size})` : ""}`}
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleGenerate(lastMode)}
+                  className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-medium text-text-2 transition-colors hover:bg-surface-2"
+                >
+                  Regenerate
+                </button>
+              </div>
+            </div>
+
             {showViolation && (
               <div className="border-b border-red/20 bg-red-pale px-5 py-3">
                 <p className="text-[13px] font-medium text-red-text">
-                  Best practice flag: One or more headlines contain banned words
+                  Best practice flag: One or more results contain banned words
                   (&quot;Guaranteed&quot;, &quot;Cheap&quot;, or &quot;Free
                   translation&quot;). Review before publishing.
                 </p>
               </div>
             )}
-            <ResultsSection
-              title="Headlines"
-              items={results.headlines}
-              maxChars={headlineMax}
-            />
-            <ResultsSection
-              title="Descriptions"
-              items={results.descriptions}
-              maxChars={descriptionMax}
-            />
+
+            {results.headlines.length > 0 && (
+              <div>
+                <div className="border-b border-border px-5 py-3">
+                  <h3 className="text-[13px] font-semibold text-text">
+                    Headlines ({results.headlines.length})
+                  </h3>
+                  <p className="mt-1 text-[12px] text-text-3">
+                    Select headlines to save to your copy bank.
+                  </p>
+                </div>
+                {results.headlines.map((item) => (
+                  <HeadlineResultRow
+                    key={item.id}
+                    item={item}
+                    maxChars={headlineMax}
+                    selected={selectedHeadlines.has(item.id)}
+                    onToggle={() => toggleHeadline(item.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {results.descriptions.length > 0 && (
+              <div>
+                <div className="border-b border-border px-5 py-3">
+                  <h3 className="text-[13px] font-semibold text-text">
+                    Descriptions ({results.descriptions.length})
+                  </h3>
+                </div>
+                {results.descriptions.map((item) => (
+                  <DescriptionResultRow
+                    key={item.id}
+                    item={item}
+                    maxChars={descriptionMax}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

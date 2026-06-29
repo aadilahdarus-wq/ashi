@@ -1,49 +1,76 @@
-import type { GenerateCopyResult } from "@/app/api/generate-copy/route";
+import type {
+  GenerateCopyResponse,
+  GenerateDescriptionResult,
+  GenerateHeadlineResult,
+} from "@/app/api/generate-copy/route";
 import type { GenerateReportResult } from "@/app/api/generate-report/route";
 import type { GeneratedCopy, GenerateMode, ScoreLabel } from "@/lib/ad-copy";
 
-type GenerateCopyRequest = {
+export type GenerateCopyRequest = {
   campaign: string;
   personas: string[];
   angle: string;
   goal: string;
-  charLimit: number;
+  campaignType: string;
+  headlineLimit: number;
+  descriptionLimit: number;
 };
 
-export async function fetchGeneratedHeadlines(
+export async function fetchGeneratedCopy(
   payload: GenerateCopyRequest,
-): Promise<GenerateCopyResult[]> {
+): Promise<GenerateCopyResponse> {
   const response = await fetch("/api/generate-copy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
-  const data = (await response.json()) as {
-    headlines?: GenerateCopyResult[];
+  const data = (await response.json()) as GenerateCopyResponse & {
     error?: string;
   };
 
   if (!response.ok) {
-    throw new Error(data.error ?? "Failed to generate headlines");
+    throw new Error(data.error ?? "Failed to generate copy");
   }
 
-  return data.headlines ?? [];
+  return {
+    headlines: data.headlines ?? [],
+    descriptions: data.descriptions ?? [],
+  };
 }
 
-function mapScore(score: GenerateCopyResult["score"]): ScoreLabel {
+function mapScore(score: GenerateHeadlineResult["score"]): ScoreLabel {
   return score;
 }
 
 export function mapHeadlineResults(
-  headlines: GenerateCopyResult[],
+  items: GenerateHeadlineResult[],
 ): GeneratedCopy[] {
-  return headlines.map((headline, index) => ({
+  return items.map((item, index) => ({
     id: `H${index + 1}`,
     label: `H${index + 1}`,
-    text: headline.text,
-    score: mapScore(headline.score),
+    text: item.text,
+    score: mapScore(item.score),
+    hasBannedWord: item.hasBannedWord,
+    category: item.category,
   }));
+}
+
+export function mapDescriptionResults(
+  items: GenerateDescriptionResult[],
+): GeneratedCopy[] {
+  return items.map((item, index) => ({
+    id: `D${index + 1}`,
+    label: `D${index + 1}`,
+    text: item.text,
+    score: mapScore(item.score),
+    hasBannedWord: item.hasBannedWord,
+    style: item.style,
+  }));
+}
+
+export function hasBannedWordViolation(items: GeneratedCopy[]): boolean {
+  return items.some((item) => item.hasBannedWord);
 }
 
 export async function streamGeneratedReport(
