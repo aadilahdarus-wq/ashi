@@ -1,5 +1,5 @@
-import EmptyPage from "@/components/pages/EmptyPage";
+import { OrganicPerformance } from "@/components/organic/OrganicPerformance";
 
 export default function OrganicPerformancePage() {
-  return <EmptyPage />;
+  return <OrganicPerformance />;
 }
