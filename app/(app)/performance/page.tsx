@@ -1,7 +1,4 @@
 "use client";
-// This page now holds interactive state (selected date range, comparison
-// toggle), so it needs "use client". Everything that depends on that state
-// is computed here and passed down as props to the chart.
 
 import { useState } from "react";
 import { PerformanceChart } from "@/components/performance/PerformanceChart";
@@ -9,13 +6,25 @@ import {
   PerformanceDateRangeBar,
   type DateRangeValue,
 } from "@/components/performance/PerformanceDateRangeBar";
+import { PerformanceAskAI } from "@/components/performance/PerformanceAskAI";
 import { PerformanceSummaryCards } from "@/components/performance/PerformanceSummaryCards";
 import { PerformanceTable } from "@/components/performance/PerformanceTable";
 import {
   filterByRange,
   performancePreviousPeriodSeries,
   performanceTimeSeries,
+  performanceRows,
 } from "@/lib/performance";
+
+function getRangeLabel(range: DateRangeValue): string {
+  if (range.preset === "7d") return "Last 7 days";
+  if (range.preset === "14d") return "Last 14 days";
+  if (range.preset === "30d") return "Last 30 days";
+  if (range.preset === "custom" && range.customStart && range.customEnd) {
+    return `${range.customStart} – ${range.customEnd}`;
+  }
+  return "selected period";
+}
 
 export default function PerformancePage() {
   const [range, setRange] = useState<DateRangeValue>({ preset: "14d" });
@@ -26,9 +35,13 @@ export default function PerformancePage() {
     ? filterByRange(performancePreviousPeriodSeries, range)
     : undefined;
 
+  const rangeLabel = getRangeLabel(range);
+
   return (
     <div className="space-y-5">
       <PerformanceSummaryCards />
+
+      <PerformanceAskAI campaigns={performanceRows} rangeLabel={rangeLabel} />
 
       <PerformanceDateRangeBar
         value={range}
