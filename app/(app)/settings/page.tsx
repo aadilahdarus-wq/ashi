@@ -1,5 +1,4 @@
-import EmptyPage from "@/components/pages/EmptyPage";
-
-export default function SettingsPage() {
-  return <EmptyPage />;
+import { SettingsPage } from "@/components/settings/SettingsPage";
+export default function SettingsRoute() {
+  return <SettingsPage />;
 }
