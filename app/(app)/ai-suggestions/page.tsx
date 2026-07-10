@@ -1,5 +1,5 @@
-import EmptyPage from "@/components/pages/EmptyPage";
+import { AISuggestionsPage } from "@/components/ai-suggestions/AISuggestionsPage";
 
-export default function AiSuggestionsPage() {
-  return <EmptyPage />;
+export default function AiSuggestionsRoute() {
+  return <AISuggestionsPage />;
 }

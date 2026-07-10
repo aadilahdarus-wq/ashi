@@ -1,5 +1,4 @@
-import EmptyPage from "@/components/pages/EmptyPage";
-
+import { CompetitorSpy } from "@/components/competitor/CompetitorSpy";
 export default function CompetitorSpyPage() {
-  return <EmptyPage />;
+  return <CompetitorSpy />;
 }
