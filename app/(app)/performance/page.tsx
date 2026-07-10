@@ -7,6 +7,7 @@ import {
   type DateRangeValue,
 } from "@/components/performance/PerformanceDateRangeBar";
 import { PerformanceAskAI } from "@/components/performance/PerformanceAskAI";
+import { BudgetPacing } from "@/components/performance/BudgetPacing";
 import { PerformanceSummaryCards } from "@/components/performance/PerformanceSummaryCards";
 import { PerformanceTable } from "@/components/performance/PerformanceTable";
 import {
@@ -40,6 +41,8 @@ export default function PerformancePage() {
   return (
     <div className="space-y-5">
       <PerformanceSummaryCards />
+
+      <BudgetPacing />
 
       <PerformanceAskAI campaigns={performanceRows} rangeLabel={rangeLabel} />
 

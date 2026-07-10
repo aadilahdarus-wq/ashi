@@ -19,7 +19,7 @@ export type PerformancePoint = {
  * pseudo-randomness keeps it visually realistic.
  */
 function generateMockSeries(days: number, seedOffset = 0): PerformancePoint[] {
-  const points: PerformancePoint[] = [];
+  const points: PerformancePoint[] = [];12
   const today = new Date();
 
   for (let i = days - 1; i >= 0; i--) {
@@ -141,3 +141,43 @@ export const performanceSummary = {
   avgCpa: "RM 35.86",
   ctrChange: "+8.2%",
 };
+
+export type BudgetPacingRow = {
+  campaign: string;
+  monthlyBudget: number;
+  spentToDate: number;
+  daysElapsed: number;
+  daysInMonth: number;
+};
+
+export function getPacingStatus(row: BudgetPacingRow): {
+  expectedSpendPct: number;
+  actualSpendPct: number;
+  status: "on-pace" | "underpacing" | "overspending";
+  statusLabel: string;
+  remainingBudget: number;
+  projectedMonthEnd: number;
+} {
+  const expectedSpendPct = (row.daysElapsed / row.daysInMonth) * 100;
+  const actualSpendPct = (row.spentToDate / row.monthlyBudget) * 100;
+  const remainingBudget = row.monthlyBudget - row.spentToDate;
+  const dailyRate = row.spentToDate / row.daysElapsed;
+  const projectedMonthEnd = dailyRate * row.daysInMonth;
+  let status: "on-pace" | "underpacing" | "overspending";
+  let statusLabel: string;
+  if (actualSpendPct > 100) { status = "overspending"; statusLabel = "Overspending"; }
+  else if (actualSpendPct < expectedSpendPct - 20) { status = "underpacing"; statusLabel = "Underpacing"; }
+  else { status = "on-pace"; statusLabel = "On Pace"; }
+  return { expectedSpendPct, actualSpendPct, status, statusLabel, remainingBudget, projectedMonthEnd };
+}
+
+const now = new Date();
+const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+const daysElapsed = now.getDate();
+
+export const budgetPacingRows: BudgetPacingRow[] = [
+  { campaign: "Brand Search", monthlyBudget: 5000, spentToDate: 4210, daysElapsed, daysInMonth },
+  { campaign: "PMax General", monthlyBudget: 4000, spentToDate: 1980, daysElapsed, daysInMonth },
+  { campaign: "Certified Translation", monthlyBudget: 2500, spentToDate: 2190, daysElapsed, daysInMonth },
+  { campaign: "Display Retargeting", monthlyBudget: 2000, spentToDate: 2240, daysElapsed, daysInMonth },
+];
