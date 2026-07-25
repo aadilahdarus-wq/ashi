@@ -1,6 +1,48 @@
-import { performanceRows } from "@/lib/performance";
+"use client";
 
-export function PerformanceTable() {
+import { useEffect, useState } from "react";
+import type { PerformanceRow } from "@/lib/performance";
+
+type Props = {
+  /** Google Ads date range enum, e.g. "LAST_14_DAYS". */
+  dateRange?: string;
+};
+
+export function PerformanceTable({ dateRange = "LAST_14_DAYS" }: Props) {
+  const [rows, setRows] = useState<PerformanceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    fetch(`/api/google-ads?dateRange=${dateRange}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.error) {
+          setError(data.error);
+          setRows([]);
+        } else {
+          setRows(data.campaigns ?? []);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load campaign data");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dateRange]);
+
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface">
       <div className="border-b border-border px-5 py-4">
@@ -27,23 +69,46 @@ export function PerformanceTable() {
             </tr>
           </thead>
           <tbody>
-            {performanceRows.map((row) => (
-              <tr
-                key={row.campaign}
-                className="border-b border-border last:border-b-0"
-              >
-                <td className="px-5 py-4 font-medium text-text">
-                  {row.campaign}
+            {loading && (
+              <tr>
+                <td colSpan={8} className="px-5 py-6 text-center text-text-3">
+                  Loading campaign data…
                 </td>
-                <td className="px-5 py-4 text-text-2">{row.impressions}</td>
-                <td className="px-5 py-4 text-text-2">{row.clicks}</td>
-                <td className="px-5 py-4 text-text-2">{row.ctr}</td>
-                <td className="px-5 py-4 text-text-2">{row.cpc}</td>
-                <td className="px-5 py-4 text-text-2">{row.spend}</td>
-                <td className="px-5 py-4 text-text-2">{row.conversions}</td>
-                <td className="px-5 py-4 text-text-2">{row.cpa}</td>
               </tr>
-            ))}
+            )}
+            {!loading && error && (
+              <tr>
+                <td colSpan={8} className="px-5 py-6 text-center text-red-text">
+                  Failed to load campaign data: {error}
+                </td>
+              </tr>
+            )}
+            {!loading && !error && rows.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-5 py-6 text-center text-text-3">
+                  No campaign data for this period.
+                </td>
+              </tr>
+            )}
+            {!loading &&
+              !error &&
+              rows.map((row) => (
+                <tr
+                  key={row.campaign}
+                  className="border-b border-border last:border-b-0"
+                >
+                  <td className="px-5 py-4 font-medium text-text">
+                    {row.campaign}
+                  </td>
+                  <td className="px-5 py-4 text-text-2">{row.impressions}</td>
+                  <td className="px-5 py-4 text-text-2">{row.clicks}</td>
+                  <td className="px-5 py-4 text-text-2">{row.ctr}</td>
+                  <td className="px-5 py-4 text-text-2">{row.cpc}</td>
+                  <td className="px-5 py-4 text-text-2">{row.spend}</td>
+                  <td className="px-5 py-4 text-text-2">{row.conversions}</td>
+                  <td className="px-5 py-4 text-text-2">{row.cpa}</td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>

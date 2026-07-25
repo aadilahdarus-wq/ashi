@@ -17,6 +17,14 @@ import {
   performanceRows,
 } from "@/lib/performance";
 
+function getGoogleAdsDateRange(range: DateRangeValue): string {
+  if (range.preset === "7d") return "LAST_7_DAYS";
+  if (range.preset === "14d") return "LAST_14_DAYS";
+  if (range.preset === "30d") return "LAST_30_DAYS";
+  // Custom ranges aren't supported by the API route yet; fall back to 30d.
+  return "LAST_30_DAYS";
+}
+
 function getRangeLabel(range: DateRangeValue): string {
   if (range.preset === "7d") return "Last 7 days";
   if (range.preset === "14d") return "Last 14 days";
@@ -55,7 +63,7 @@ export default function PerformancePage() {
 
       <PerformanceChart data={currentData} previousData={previousData} />
 
-      <PerformanceTable />
+      <PerformanceTable dateRange={getGoogleAdsDateRange(range)} />
     </div>
   );
 }
