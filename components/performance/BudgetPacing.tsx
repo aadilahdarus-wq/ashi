@@ -1,4 +1,7 @@
-import { budgetPacingRows, getPacingStatus } from "@/lib/performance";
+"use client";
+
+import { useEffect, useState } from "react";
+import { getPacingStatus, type BudgetPacingRow } from "@/lib/performance";
 
 const statusStyles = {
   "on-pace": { badge: "bg-green-pale text-green border border-green", bar: "#16a34a" },
@@ -11,8 +14,63 @@ function fmt(n: number) {
 }
 
 export function BudgetPacing() {
-  const rows = budgetPacingRows.map(row => ({ ...row, ...getPacingStatus(row) }));
-  const flagged = rows.filter(r => r.status !== "on-pace").length;
+  const [rawRows, setRawRows] = useState<BudgetPacingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/google-ads/budget-pacing")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.error) {
+          setError(data.error);
+        } else {
+          setRawRows(data.rows ?? []);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load budget pacing");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-5 text-[13px] text-text-3">
+        Loading budget pacing…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-5 text-[13px] text-red-text">
+        Failed to load budget pacing: {error}
+      </div>
+    );
+  }
+
+  if (rawRows.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-5 text-[13px] text-text-3">
+        No active campaigns with spend this month.
+      </div>
+    );
+  }
+
+  const rows = rawRows.map((row) => ({ ...row, ...getPacingStatus(row) }));
+  const flagged = rows.filter((r) => r.status !== "on-pace").length;
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface">
@@ -29,7 +87,7 @@ export function BudgetPacing() {
         )}
       </div>
       <div className="divide-y divide-border">
-        {rows.map(row => {
+        {rows.map((row) => {
           const sty = statusStyles[row.status];
           const barPct = Math.min(row.actualSpendPct, 100);
           const expectedMarkerPct = Math.min(row.expectedSpendPct, 100);

@@ -1,44 +1,12 @@
 import { NextResponse } from "next/server";
+import { getGoogleAdsCustomer } from "@/lib/google-ads-client";
 
 export async function GET(request: Request) {
   try {
-    console.log("ENV CHECK:", {
-      token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN ? "found" : "MISSING",
-      clientId: process.env.GOOGLE_ADS_CLIENT_ID ? "found" : "MISSING",
-      secret: process.env.GOOGLE_ADS_CLIENT_SECRET ? "found" : "MISSING",
-      refresh: process.env.GOOGLE_ADS_REFRESH_TOKEN ? "found" : "MISSING",
-      customerId: process.env.GOOGLE_ADS_CUSTOMER_ID ? "found" : "MISSING",
-    });
     const { searchParams } = new URL(request.url);
     const dateRange = searchParams.get("dateRange") ?? "LAST_14_DAYS";
 
-    const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
-    const clientId = process.env.GOOGLE_ADS_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET;
-    const refreshToken = process.env.GOOGLE_ADS_REFRESH_TOKEN;
-    const loginCustomerId = process.env.GOOGLE_ADS_LOGIN_CUSTOMER_ID;
-    const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
-
-    if (!developerToken || !clientId || !clientSecret || !refreshToken || !customerId) {
-      return NextResponse.json(
-        { error: "Google Ads credentials not configured" },
-        { status: 500 }
-      );
-    }
-
-    const { GoogleAdsApi } = await import("google-ads-api");
-
-    const client = new GoogleAdsApi({
-      client_id: clientId,
-      client_secret: clientSecret,
-      developer_token: developerToken,
-    });
-
-    const customer = client.Customer({
-      customer_id: customerId,
-      refresh_token: refreshToken,
-      login_customer_id: loginCustomerId,
-    });
+    const customer = await getGoogleAdsCustomer();
 
     const campaigns = await customer.query(`
       SELECT
