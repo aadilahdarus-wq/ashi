@@ -1,5 +1,61 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type DashboardSummary = {
+  healthScore: number;
+  healthSummary: string;
+};
+
 export function HealthScore() {
-  const score = 84;
+  const [data, setData] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/google-ads/dashboard-summary")
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled) return;
+        if (json.error) {
+          setError(json.error);
+        } else {
+          setData(json);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load account health");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-[13px] text-text-3">
+        Loading account health…
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="rounded-xl border border-border bg-surface p-6 text-[13px] text-red-text">
+        Failed to load account health: {error ?? "Unknown error"}
+      </div>
+    );
+  }
+
+  const score = data.healthScore;
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;
@@ -46,8 +102,7 @@ export function HealthScore() {
         <div>
           <p className="text-[15px] font-semibold text-text">Account Health</p>
           <p className="mt-1 max-w-sm text-[13px] leading-relaxed text-text-3">
-            Your account is performing well. Spend efficiency and lead volume
-            are trending upward this period.
+            {data.healthSummary}
           </p>
         </div>
       </div>

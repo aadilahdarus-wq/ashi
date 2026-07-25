@@ -1,14 +1,59 @@
-import {
-  campaigns,
-  statusStyles,
-  targetStyles,
-} from "@/lib/campaigns";
+"use client";
+
+import { useEffect, useState } from "react";
+
+type CampaignStatus = "Active" | "Paused";
+
+type Campaign = {
+  name: string;
+  status: CampaignStatus;
+  spend: string;
+  leads: string;
+  cpl: string;
+  roas: string;
+};
 
 type CampaignTableProps = {
   embedded?: boolean;
 };
 
+const statusStyles: Record<CampaignStatus, string> = {
+  Active: "bg-green-pale text-green-text",
+  Paused: "bg-surface-2 text-text-3",
+};
+
 export function CampaignTable({ embedded = false }: CampaignTableProps) {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/google-ads/campaign-overview")
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.error) {
+          setError(data.error);
+        } else {
+          setCampaigns(data.campaigns ?? []);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load campaigns");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const wrapperClassName = embedded
     ? "overflow-hidden"
     : "overflow-hidden rounded-xl border border-border bg-surface";
@@ -30,36 +75,53 @@ export function CampaignTable({ embedded = false }: CampaignTableProps) {
               <th className="px-5 py-3 font-medium text-text-3">Leads</th>
               <th className="px-5 py-3 font-medium text-text-3">CPL</th>
               <th className="px-5 py-3 font-medium text-text-3">ROAS</th>
-              <th className="px-5 py-3 font-medium text-text-3">Target</th>
             </tr>
           </thead>
           <tbody>
-            {campaigns.map((campaign) => (
-              <tr
-                key={campaign.name}
-                className="border-b border-border last:border-b-0"
-              >
-                <td className="px-5 py-4 font-medium text-text">
-                  {campaign.name}
-                </td>
-                <td className="px-5 py-4">
-                  <span
-                    className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${statusStyles[campaign.status]}`}
-                  >
-                    {campaign.status}
-                  </span>
-                </td>
-                <td className="px-5 py-4 text-text-2">{campaign.spend}</td>
-                <td className="px-5 py-4 text-text-2">{campaign.leads}</td>
-                <td className="px-5 py-4 text-text-2">{campaign.cpl}</td>
-                <td className="px-5 py-4 text-text-2">{campaign.roas}</td>
-                <td
-                  className={`px-5 py-4 font-medium ${targetStyles[campaign.target.tone]}`}
-                >
-                  {campaign.target.label}
+            {loading && (
+              <tr>
+                <td colSpan={6} className="px-5 py-6 text-center text-text-3">
+                  Loading campaigns…
                 </td>
               </tr>
-            ))}
+            )}
+            {!loading && error && (
+              <tr>
+                <td colSpan={6} className="px-5 py-6 text-center text-red-text">
+                  Failed to load campaigns: {error}
+                </td>
+              </tr>
+            )}
+            {!loading && !error && campaigns.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-5 py-6 text-center text-text-3">
+                  No campaign data.
+                </td>
+              </tr>
+            )}
+            {!loading &&
+              !error &&
+              campaigns.map((campaign) => (
+                <tr
+                  key={campaign.name}
+                  className="border-b border-border last:border-b-0"
+                >
+                  <td className="px-5 py-4 font-medium text-text">
+                    {campaign.name}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span
+                      className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${statusStyles[campaign.status]}`}
+                    >
+                      {campaign.status}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-text-2">{campaign.spend}</td>
+                  <td className="px-5 py-4 text-text-2">{campaign.leads}</td>
+                  <td className="px-5 py-4 text-text-2">{campaign.cpl}</td>
+                  <td className="px-5 py-4 text-text-2">{campaign.roas}</td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
