@@ -29,6 +29,8 @@ export function SettingsPage(){
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
   const [toast,setToast]=useState("");
+  const [testingTelegram,setTestingTelegram]=useState(false);
+  const [sendingReport,setSendingReport]=useState(false);
   const sb=createClient();
   useEffect(()=>{
     sb.from("user_settings").select("*").limit(1).single().then(({data,error})=>{
@@ -36,7 +38,34 @@ export function SettingsPage(){
       setLoading(false);
     });
   },[]);
-  function showToast(m:string){setToast(m);setTimeout(()=>setToast(""),2500);}
+  function showToast(m:string){setToast(m);setTimeout(()=>setToast(""),4000);}
+  async function sendTelegramTest(){
+    setTestingTelegram(true);
+    try{
+      const res=await fetch("/api/telegram/test",{method:"POST"});
+      const data=await res.json();
+      if(!res.ok||data.error)throw new Error(data.error??"Failed to send test message");
+      showToast("✓ Test message sent — check Telegram");
+    }catch(e){showToast(e instanceof Error?e.message:"Failed to send test message");}
+    finally{setTestingTelegram(false);}
+  }
+  async function sendWeeklyReportNow(){
+    setSendingReport(true);
+    try{
+      const res=await fetch("/api/reports/weekly/test",{method:"POST"});
+      const data=await res.json();
+      if(!res.ok||data.error)throw new Error(data.error??"Failed to send reports");
+      const results=data.results as {client:string;status:string;error?:string}[];
+      const sent=results.filter(r=>r.status==="sent").length;
+      const failed=results.filter(r=>r.status==="failed");
+      if(failed.length===0){
+        showToast(`✓ Sent ${sent} report${sent===1?"":"s"} to Telegram`);
+      }else{
+        showToast(`Sent ${sent}, failed: ${failed.map(f=>`${f.client} (${f.error})`).join(", ")}`);
+      }
+    }catch(e){showToast(e instanceof Error?e.message:"Failed to send reports");}
+    finally{setSendingReport(false);}
+  }
   function upd(p:Partial<Settings>){setS(prev=>({...prev,...p}));}
   function updRule(k:keyof Settings["alert_rules"],v:number){setS(prev=>({...prev,alert_rules:{...prev.alert_rules,[k]:v}}));}
   async function save(){
@@ -113,7 +142,11 @@ export function SettingsPage(){
               <F l="Bot Token" h="Get from @BotFather on Telegram"><input type="text" value={s.telegram_bot_token} onChange={e=>upd({telegram_bot_token:e.target.value})} placeholder="Bot token" className={cls}/></F>
               <F l="Chat ID" h="Your personal or group chat ID"><input type="text" value={s.telegram_chat_id} onChange={e=>upd({telegram_chat_id:e.target.value})} placeholder="Chat ID" className={cls}/></F>
             </div>
-            <button type="button" onClick={()=>showToast("✓ Test message sent to Telegram")} className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-medium text-text-2 hover:bg-surface-2">Send Test Message</button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={testingTelegram} onClick={sendTelegramTest} className="rounded-lg border border-border px-3 py-1.5 text-[12px] font-medium text-text-2 hover:bg-surface-2 disabled:opacity-50">{testingTelegram?"Sending…":"Send Test Message"}</button>
+              <button type="button" disabled={sendingReport} onClick={sendWeeklyReportNow} className="rounded-lg bg-orange px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 disabled:opacity-50">{sendingReport?"Sending…":"Send weekly report now"}</button>
+            </div>
+            <p className="mt-2 text-[11px] text-text-3">Uses the TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID configured in Vercel — not the fields above (those aren&apos;t wired up yet).</p>
           </SC>
           <SC t="Alert Frequency">
             <TG l="Immediate alerts" d="Send as soon as a red flag triggers" v={s.alert_immediate} c={v=>upd({alert_immediate:v})}/>

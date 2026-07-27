@@ -32,3 +32,38 @@ export async function getGoogleAdsCustomer(customerId?: string | null) {
     login_customer_id: loginCustomerId,
   });
 }
+
+/**
+ * The google-ads-api library doesn't always throw plain Error instances —
+ * API failures often come back as GoogleAdsFailure objects with a nested
+ * `errors` array instead. Pulling the real message out here means routes
+ * surface the actual reason (e.g. "not authorized", "customer not found")
+ * instead of a generic fallback string.
+ */
+export function formatGoogleAdsError(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object") {
+    const anyErr = error as Record<string, any>;
+
+    const nestedMessages: string[] = Array.isArray(anyErr.errors)
+      ? anyErr.errors
+          .map((e: any) => e?.message || e?.error_code?.error_code || null)
+          .filter(Boolean)
+      : [];
+    if (nestedMessages.length > 0) return nestedMessages.join("; ");
+
+    if (typeof anyErr.message === "string" && anyErr.message) return anyErr.message;
+
+    try {
+      const serialized = JSON.stringify(anyErr);
+      if (serialized && serialized !== "{}") return serialized.slice(0, 500);
+    } catch {
+      // fall through
+    }
+  }
+
+  return "Unknown Google Ads API error";
+}

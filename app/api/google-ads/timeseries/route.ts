@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getGoogleAdsCustomer } from "@/lib/google-ads-client";
+import { formatGoogleAdsError, getGoogleAdsCustomer } from "@/lib/google-ads-client";
 import { getPreviousWindow } from "@/lib/date-range";
 
 type SeriesPoint = {
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ series, previousSeries });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to fetch performance time series";
+    const message = formatGoogleAdsError(error);
     console.error("Google Ads timeseries error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }

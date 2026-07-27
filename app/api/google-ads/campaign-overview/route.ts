@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getGoogleAdsCustomer } from "@/lib/google-ads-client";
+import { formatGoogleAdsError, getGoogleAdsCustomer } from "@/lib/google-ads-client";
 
 export async function GET(request: Request) {
   try {
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ campaigns });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to fetch campaign overview";
+    const message = formatGoogleAdsError(error);
     console.error("Google Ads campaign overview error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }

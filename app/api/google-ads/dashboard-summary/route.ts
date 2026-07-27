@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getGoogleAdsCustomer } from "@/lib/google-ads-client";
+import { formatGoogleAdsError, getGoogleAdsCustomer } from "@/lib/google-ads-client";
 import { getPreviousWindow } from "@/lib/date-range";
 
 function aggregate(rows: any[]) {
@@ -98,7 +98,7 @@ export async function GET(request: Request) {
       healthSummary,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to fetch dashboard summary";
+    const message = formatGoogleAdsError(error);
     console.error("Google Ads dashboard summary error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }

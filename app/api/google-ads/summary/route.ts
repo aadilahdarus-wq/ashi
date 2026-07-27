@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getGoogleAdsCustomer } from "@/lib/google-ads-client";
+import { formatGoogleAdsError, getGoogleAdsCustomer } from "@/lib/google-ads-client";
 import { getPreviousWindow } from "@/lib/date-range";
 
 function aggregate(rows: any[]) {
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
       ctrChange: `${ctrChangePct >= 0 ? "+" : ""}${ctrChangePct.toFixed(1)}%`,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to fetch performance summary";
+    const message = formatGoogleAdsError(error);
     console.error("Google Ads summary error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }

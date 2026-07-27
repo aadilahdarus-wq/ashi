@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getGoogleAdsCustomer } from "@/lib/google-ads-client";
+import { formatGoogleAdsError, getGoogleAdsCustomer } from "@/lib/google-ads-client";
 
 export async function GET(request: Request) {
   try {
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ campaigns: rows, dateRange });
 
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to fetch Google Ads data";
+    const message = formatGoogleAdsError(error);
     console.error("Google Ads API error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
