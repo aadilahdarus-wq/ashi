@@ -53,12 +53,13 @@ export async function GET(request: Request) {
     const start = searchParams.get("start");
     const end = searchParams.get("end");
     const compare = searchParams.get("compare") === "true";
+    const customerId = searchParams.get("customerId");
 
     if (!start || !end) {
       return NextResponse.json({ error: "start and end date params are required" }, { status: 400 });
     }
 
-    const customer = await getGoogleAdsCustomer();
+    const customer = await getGoogleAdsCustomer(customerId);
 
     const buildQuery = (s: string, e: string) => `
       SELECT segments.date, metrics.cost_micros, metrics.conversions

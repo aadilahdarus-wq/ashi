@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useClient } from "@/lib/client-context";
 
 type ChangeType = "positive" | "negative" | "neutral";
 
@@ -50,14 +51,24 @@ function ChangeBadge({ change, changeType }: { change: string; changeType: Chang
 }
 
 export function StatCards() {
+  const { selectedClient } = useClient();
+  const customerId = selectedClient?.google_ads_customer_id ?? null;
+
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!customerId) {
+      setData(null);
+      setLoading(false);
+      setError("No Google Ads account linked to this client yet. Add one in Client Profile.");
+      return;
+    }
+
     let cancelled = false;
 
-    fetch("/api/google-ads/dashboard-summary")
+    fetch(`/api/google-ads/dashboard-summary?customerId=${customerId}`)
       .then((res) => res.json())
       .then((json) => {
         if (cancelled) return;
@@ -79,7 +90,7 @@ export function StatCards() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [customerId]);
 
   if (loading) {
     return (
@@ -99,7 +110,7 @@ export function StatCards() {
   if (error || !data) {
     return (
       <div className="rounded-xl border border-border bg-surface p-5 text-[13px] text-red-text">
-        Failed to load stats: {error ?? "Unknown error"}
+        {error ?? "Unknown error"}
       </div>
     );
   }

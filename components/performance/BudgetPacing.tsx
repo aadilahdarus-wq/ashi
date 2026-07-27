@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getPacingStatus, type BudgetPacingRow } from "@/lib/performance";
+import { useClient } from "@/lib/client-context";
 
 const statusStyles = {
   "on-pace": { badge: "bg-green-pale text-green border border-green", bar: "#16a34a" },
@@ -14,14 +15,24 @@ function fmt(n: number) {
 }
 
 export function BudgetPacing() {
+  const { selectedClient } = useClient();
+  const customerId = selectedClient?.google_ads_customer_id ?? null;
+
   const [rawRows, setRawRows] = useState<BudgetPacingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!customerId) {
+      setRawRows([]);
+      setLoading(false);
+      setError("No Google Ads account linked to this client yet. Add one in Client Profile.");
+      return;
+    }
+
     let cancelled = false;
 
-    fetch("/api/google-ads/budget-pacing")
+    fetch(`/api/google-ads/budget-pacing?customerId=${customerId}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -43,7 +54,7 @@ export function BudgetPacing() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [customerId]);
 
   if (loading) {
     return (
@@ -56,7 +67,7 @@ export function BudgetPacing() {
   if (error) {
     return (
       <div className="rounded-xl border border-border bg-surface p-5 text-[13px] text-red-text">
-        Failed to load budget pacing: {error}
+        {error}
       </div>
     );
   }

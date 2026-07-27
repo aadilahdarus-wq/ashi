@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useClient } from "@/lib/client-context";
 
 type CampaignStatus = "Active" | "Paused";
 
@@ -23,14 +24,24 @@ const statusStyles: Record<CampaignStatus, string> = {
 };
 
 export function CampaignTable({ embedded = false }: CampaignTableProps) {
+  const { selectedClient } = useClient();
+  const customerId = selectedClient?.google_ads_customer_id ?? null;
+
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!customerId) {
+      setCampaigns([]);
+      setLoading(false);
+      setError("No Google Ads account linked to this client yet.");
+      return;
+    }
+
     let cancelled = false;
 
-    fetch("/api/google-ads/campaign-overview")
+    fetch(`/api/google-ads/campaign-overview?customerId=${customerId}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -52,7 +63,7 @@ export function CampaignTable({ embedded = false }: CampaignTableProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [customerId]);
 
   const wrapperClassName = embedded
     ? "overflow-hidden"
@@ -88,7 +99,7 @@ export function CampaignTable({ embedded = false }: CampaignTableProps) {
             {!loading && error && (
               <tr>
                 <td colSpan={6} className="px-5 py-6 text-center text-red-text">
-                  Failed to load campaigns: {error}
+                  {error}
                 </td>
               </tr>
             )}

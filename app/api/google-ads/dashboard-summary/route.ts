@@ -31,8 +31,9 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const days = Number(searchParams.get("days") ?? "30");
+    const customerId = searchParams.get("customerId");
 
-    const customer = await getGoogleAdsCustomer();
+    const customer = await getGoogleAdsCustomer(customerId);
 
     const fmt = (d: Date) => d.toISOString().slice(0, 10);
     const yesterday = new Date();

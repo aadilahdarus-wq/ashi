@@ -8,6 +8,7 @@ export type Client = {
   brand_voice: { tone?: string } | null;
   always_use: string[] | null;
   never_use: string[] | null;
+  google_ads_customer_id: string | null;
   created_at: string;
 };
 

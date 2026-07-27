@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useClient } from "@/lib/client-context";
 
 type SummaryData = {
   totalSpend: string;
@@ -15,16 +16,26 @@ type Props = {
 };
 
 export function PerformanceSummaryCards({ start, end }: Props) {
+  const { selectedClient } = useClient();
+  const customerId = selectedClient?.google_ads_customer_id ?? null;
+
   const [data, setData] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!customerId) {
+      setData(null);
+      setLoading(false);
+      setError("No Google Ads account linked to this client yet. Add one in Client Profile.");
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    fetch(`/api/google-ads/summary?start=${start}&end=${end}`)
+    fetch(`/api/google-ads/summary?start=${start}&end=${end}&customerId=${customerId}`)
       .then((res) => res.json())
       .then((json) => {
         if (cancelled) return;
@@ -46,7 +57,7 @@ export function PerformanceSummaryCards({ start, end }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [start, end]);
+  }, [start, end, customerId]);
 
   const stats: { label: string; value?: string }[] = [
     { label: "Total Spend", value: data?.totalSpend },
@@ -71,9 +82,7 @@ export function PerformanceSummaryCards({ start, end }: Props) {
         ))}
       </div>
       {error && (
-        <p className="mt-2 text-[12px] text-red-text">
-          Failed to load summary: {error}
-        </p>
+        <p className="mt-2 text-[12px] text-red-text">{error}</p>
       )}
     </div>
   );

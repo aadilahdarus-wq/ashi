@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ensureAmInterpretivClient } from "@/lib/clients";
+import { useClient } from "@/lib/client-context";
 import { createClient } from "@/lib/supabase/client";
 import type { UtmLink } from "@/lib/supabase/types";
 import {
@@ -101,12 +101,14 @@ function formatDate(value: string) {
 }
 
 export function SingleLinkTab() {
+  const { selectedClient } = useClient();
+  const clientId = selectedClient?.id ?? null;
+
   const [params, setParams] = useState<UtmParams>(initialParams);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [clientId, setClientId] = useState<string | null>(null);
   const [history, setHistory] = useState<UtmLink[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
@@ -126,11 +128,16 @@ export function SingleLinkTab() {
   }
 
   useEffect(() => {
-    async function init() {
+    if (!clientId) {
+      setHistory([]);
+      setLoadingHistory(false);
+      return;
+    }
+
+    async function init(activeClientId: string) {
+      setLoadingHistory(true);
       try {
-        const client = await ensureAmInterpretivClient();
-        setClientId(client.id);
-        await loadHistory(client.id);
+        await loadHistory(activeClientId);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load UTM history");
       } finally {
@@ -138,8 +145,9 @@ export function SingleLinkTab() {
       }
     }
 
-    void init();
-  }, []);
+    void init(clientId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
 
   function updateField(key: keyof UtmParams, value: string) {
     const nextValue =
@@ -278,7 +286,7 @@ export function SingleLinkTab() {
           <div>
             <h2 className="text-[15px] font-semibold text-text">Saved links</h2>
             <p className="mt-1 text-[13px] text-text-3">
-              Recent UTM links saved for AM Interpretiv.
+              Recent UTM links saved for {selectedClient?.name ?? "this client"}.
             </p>
           </div>
         </div>

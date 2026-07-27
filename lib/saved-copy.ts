@@ -1,4 +1,3 @@
-import { ensureAmInterpretivClient } from "@/lib/clients";
 import { createClient } from "@/lib/supabase/client";
 import type { SavedCopy } from "@/lib/supabase/types";
 
@@ -11,14 +10,13 @@ export type SaveCopyItem = {
   score: string;
 };
 
-export async function saveCopyToBank(items: SaveCopyItem[]): Promise<SavedCopy[]> {
+export async function saveCopyToBank(clientId: string, items: SaveCopyItem[]): Promise<SavedCopy[]> {
   if (items.length === 0) return [];
 
-  const client = await ensureAmInterpretivClient();
   const supabase = createClient();
 
   const rows = items.map((item) => ({
-    client_id: client.id,
+    client_id: clientId,
     copy_type: item.copyType,
     text: item.text,
     category: item.category ?? null,
@@ -33,14 +31,13 @@ export async function saveCopyToBank(items: SaveCopyItem[]): Promise<SavedCopy[]
   return data ?? [];
 }
 
-export async function fetchSavedCopy(limit = 20): Promise<SavedCopy[]> {
-  const client = await ensureAmInterpretivClient();
+export async function fetchSavedCopy(clientId: string, limit = 20): Promise<SavedCopy[]> {
   const supabase = createClient();
 
   const { data, error } = await supabase
     .from("saved_copy")
     .select("*")
-    .eq("client_id", client.id)
+    .eq("client_id", clientId)
     .order("created_at", { ascending: false })
     .limit(limit);
 

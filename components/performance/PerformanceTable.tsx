@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { PerformanceRow } from "@/lib/performance";
+import { useClient } from "@/lib/client-context";
 
 type Props = {
   /** Google Ads date range enum, e.g. "LAST_14_DAYS". */
@@ -9,16 +10,26 @@ type Props = {
 };
 
 export function PerformanceTable({ dateRange = "LAST_14_DAYS" }: Props) {
+  const { selectedClient } = useClient();
+  const customerId = selectedClient?.google_ads_customer_id ?? null;
+
   const [rows, setRows] = useState<PerformanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!customerId) {
+      setRows([]);
+      setLoading(false);
+      setError("No Google Ads account linked to this client yet. Add one in Client Profile.");
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    fetch(`/api/google-ads?dateRange=${dateRange}`)
+    fetch(`/api/google-ads?dateRange=${dateRange}&customerId=${customerId}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -41,7 +52,7 @@ export function PerformanceTable({ dateRange = "LAST_14_DAYS" }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [dateRange]);
+  }, [dateRange, customerId]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface">

@@ -11,6 +11,7 @@ import { BudgetPacing } from "@/components/performance/BudgetPacing";
 import { PerformanceSummaryCards } from "@/components/performance/PerformanceSummaryCards";
 import { PerformanceTable } from "@/components/performance/PerformanceTable";
 import type { PerformancePoint, PerformanceRow } from "@/lib/performance";
+import { useClient } from "@/lib/client-context";
 
 function getGoogleAdsDateRange(range: DateRangeValue): string {
   if (range.preset === "7d") return "LAST_7_DAYS";
@@ -49,6 +50,9 @@ function getWindow(range: DateRangeValue): { start: string; end: string } {
 }
 
 export default function PerformancePage() {
+  const { selectedClient } = useClient();
+  const customerId = selectedClient?.google_ads_customer_id ?? null;
+
   const [range, setRange] = useState<DateRangeValue>({ preset: "14d" });
   const [compareEnabled, setCompareEnabled] = useState(false);
 
@@ -65,6 +69,14 @@ export default function PerformancePage() {
   // Fetch the daily time series for the chart whenever the window or the
   // compare toggle changes.
   useEffect(() => {
+    if (!customerId) {
+      setCurrentData([]);
+      setPreviousData(undefined);
+      setChartLoading(false);
+      setChartError("No Google Ads account linked to this client yet. Add one in Client Profile.");
+      return;
+    }
+
     let cancelled = false;
     setChartLoading(true);
     setChartError(null);
@@ -73,6 +85,7 @@ export default function PerformancePage() {
       start: window.start,
       end: window.end,
       compare: String(compareEnabled),
+      customerId,
     });
 
     fetch(`/api/google-ads/timeseries?${params.toString()}`)
@@ -101,14 +114,19 @@ export default function PerformancePage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [window.start, window.end, compareEnabled]);
+  }, [window.start, window.end, compareEnabled, customerId]);
 
   // Fetch campaign rows once per range change, shared with Ask ASHI so its
   // answers reflect the same period the user is looking at.
   useEffect(() => {
+    if (!customerId) {
+      setCampaignRows([]);
+      return;
+    }
+
     let cancelled = false;
 
-    fetch(`/api/google-ads?dateRange=${getGoogleAdsDateRange(range)}`)
+    fetch(`/api/google-ads?dateRange=${getGoogleAdsDateRange(range)}&customerId=${customerId}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -123,7 +141,7 @@ export default function PerformancePage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range.preset, range.customStart, range.customEnd]);
+  }, [range.preset, range.customStart, range.customEnd, customerId]);
 
   return (
     <div className="space-y-5">
@@ -146,7 +164,7 @@ export default function PerformancePage() {
 
       {chartError ? (
         <div className="rounded-xl border border-border bg-surface p-5 text-[13px] text-red-text">
-          Failed to load chart data: {chartError}
+          {chartError}
         </div>
       ) : (
         <PerformanceChart data={currentData} previousData={previousData} />

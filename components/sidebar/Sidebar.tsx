@@ -1,8 +1,8 @@
 "use client";
 
 import { AshiLogo } from "@/components/logo/AshiLogo";
-import { ChevronDownIcon } from "@/components/icons";
 import { NavItem } from "@/components/sidebar/NavItem";
+import { ClientSwitcher } from "@/components/sidebar/ClientSwitcher";
 import { navSections } from "@/lib/navigation";
 
 export function Sidebar() {
@@ -12,22 +12,7 @@ export function Sidebar() {
         <AshiLogo />
       </div>
 
-      <div className="border-b border-border px-3 py-3">
-        <button
-          type="button"
-          className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-left transition-colors hover:bg-surface-2"
-        >
-          <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-orange" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] font-medium text-text">
-              AM Interpretiv
-            </span>
-          </span>
-          <ChevronDownIcon className="h-4 w-4 shrink-0 stroke-text-4" />
-        </button>
-      </div>
+      <ClientSwitcher />
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <div className="space-y-5">

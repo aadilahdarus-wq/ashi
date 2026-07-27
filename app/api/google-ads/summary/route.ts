@@ -24,12 +24,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const start = searchParams.get("start");
     const end = searchParams.get("end");
+    const customerId = searchParams.get("customerId");
 
     if (!start || !end) {
       return NextResponse.json({ error: "start and end date params are required" }, { status: 400 });
     }
 
-    const customer = await getGoogleAdsCustomer();
+    const customer = await getGoogleAdsCustomer(customerId);
     const prevWindow = getPreviousWindow(start, end);
 
     const buildQuery = (s: string, e: string) => `

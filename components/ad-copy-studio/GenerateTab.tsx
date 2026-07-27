@@ -12,6 +12,7 @@ import {
   type HeadlineCategory,
 } from "@/lib/copy-categories";
 import { saveCopyToBank } from "@/lib/saved-copy";
+import { useClient } from "@/lib/client-context";
 import type {
   Angle,
   CampaignName,
@@ -200,6 +201,7 @@ function DescriptionResultRow({
 }
 
 export function GenerateTab() {
+  const { selectedClient } = useClient();
   const [campaignType, setCampaignType] = useState<CampaignType>("RSA");
   const [campaign, setCampaign] = useState<CampaignName>("Certified Translation");
   const [personas, setPersonas] = useState<string[]>(defaultPersonas);
@@ -299,7 +301,7 @@ export function GenerateTab() {
   }
 
   async function handleSaveToBank() {
-    if (!results?.headlines.length || selectedHeadlines.size === 0) return;
+    if (!results?.headlines.length || selectedHeadlines.size === 0 || !selectedClient) return;
 
     setIsSaving(true);
     setError(null);
@@ -317,7 +319,7 @@ export function GenerateTab() {
           score: item.score,
         }));
 
-      await saveCopyToBank(items);
+      await saveCopyToBank(selectedClient.id, items);
       setBankMessage(`Saved ${items.length} headline${items.length === 1 ? "" : "s"} to bank`);
       setSelectedHeadlines(new Set());
     } catch (err) {
@@ -591,7 +593,7 @@ export function GenerateTab() {
                     </button>
                     <button
                       type="button"
-                      disabled={isSaving || selectedHeadlines.size === 0}
+                      disabled={isSaving || selectedHeadlines.size === 0 || !selectedClient}
                       onClick={handleSaveToBank}
                       className="rounded-lg bg-orange px-3 py-1.5 text-[12px] font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                     >

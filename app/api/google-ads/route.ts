@@ -5,8 +5,9 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const dateRange = searchParams.get("dateRange") ?? "LAST_14_DAYS";
+    const customerId = searchParams.get("customerId");
 
-    const customer = await getGoogleAdsCustomer();
+    const customer = await getGoogleAdsCustomer(customerId);
 
     const campaigns = await customer.query(`
       SELECT

@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { getGoogleAdsCustomer } from "@/lib/google-ads-client";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const customer = await getGoogleAdsCustomer();
+    const { searchParams } = new URL(request.url);
+    const customerId = searchParams.get("customerId");
+
+    const customer = await getGoogleAdsCustomer(customerId);
 
     const now = new Date();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();

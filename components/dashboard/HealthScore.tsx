@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useClient } from "@/lib/client-context";
 
 type DashboardSummary = {
   healthScore: number;
@@ -8,14 +9,24 @@ type DashboardSummary = {
 };
 
 export function HealthScore() {
+  const { selectedClient } = useClient();
+  const customerId = selectedClient?.google_ads_customer_id ?? null;
+
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!customerId) {
+      setData(null);
+      setLoading(false);
+      setError("No Google Ads account linked to this client yet. Add one in Client Profile.");
+      return;
+    }
+
     let cancelled = false;
 
-    fetch("/api/google-ads/dashboard-summary")
+    fetch(`/api/google-ads/dashboard-summary?customerId=${customerId}`)
       .then((res) => res.json())
       .then((json) => {
         if (cancelled) return;
@@ -37,7 +48,7 @@ export function HealthScore() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [customerId]);
 
   if (loading) {
     return (
@@ -50,7 +61,7 @@ export function HealthScore() {
   if (error || !data) {
     return (
       <div className="rounded-xl border border-border bg-surface p-6 text-[13px] text-red-text">
-        Failed to load account health: {error ?? "Unknown error"}
+        {error ?? "Unknown error"}
       </div>
     );
   }

@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  AM_INTERPRETIV_DEFAULT,
-  ensureAmInterpretivClient,
-  getAmInterpretivClient,
-} from "@/lib/clients";
+import { useClient } from "@/lib/client-context";
 import { createClient } from "@/lib/supabase/client";
 import type { Client } from "@/lib/supabase/types";
 
@@ -18,9 +14,10 @@ type ClientFormState = {
   tone: string;
   alwaysUse: string;
   neverUse: string;
+  googleAdsCustomerId: string;
 };
 
-function toFormState(client: Partial<Client> | typeof AM_INTERPRETIV_DEFAULT): ClientFormState {
+function toFormState(client: Client): ClientFormState {
   return {
     name: client.name ?? "",
     industry: client.industry ?? "",
@@ -30,6 +27,7 @@ function toFormState(client: Partial<Client> | typeof AM_INTERPRETIV_DEFAULT): C
     tone: client.brand_voice?.tone ?? "",
     alwaysUse: (client.always_use ?? []).join(", "),
     neverUse: (client.never_use ?? []).join(", "),
+    googleAdsCustomerId: client.google_ads_customer_id ?? "",
   };
 }
 
@@ -40,33 +38,34 @@ function parseList(value: string): string[] {
     .filter(Boolean);
 }
 
+const EMPTY_FORM: ClientFormState = {
+  name: "",
+  industry: "",
+  website: "",
+  currency: "MYR",
+  location: "",
+  tone: "",
+  alwaysUse: "",
+  neverUse: "",
+  googleAdsCustomerId: "",
+};
+
 export function ClientProfileForm() {
-  const [clientId, setClientId] = useState<string | null>(null);
-  const [form, setForm] = useState<ClientFormState>(toFormState(AM_INTERPRETIV_DEFAULT));
-  const [loading, setLoading] = useState(true);
+  const { selectedClient, loading: clientsLoading, refresh } = useClient();
+  const [form, setForm] = useState<ClientFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Reset the form whenever the selected client changes (switching clients
+  // in the sidebar, or the initial load finishing).
   useEffect(() => {
-    async function loadClient() {
-      try {
-        const client = await getAmInterpretivClient();
-        if (client) {
-          setClientId(client.id);
-          setForm(toFormState(client));
-        } else {
-          setForm(toFormState(AM_INTERPRETIV_DEFAULT));
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load client profile");
-      } finally {
-        setLoading(false);
-      }
+    if (selectedClient) {
+      setForm(toFormState(selectedClient));
+      setSaved(false);
+      setError(null);
     }
-
-    void loadClient();
-  }, []);
+  }, [selectedClient]);
 
   function updateField<K extends keyof ClientFormState>(
     key: K,
@@ -77,6 +76,8 @@ export function ClientProfileForm() {
   }
 
   async function handleSave() {
+    if (!selectedClient) return;
+
     setSaving(true);
     setError(null);
     setSaved(false);
@@ -92,29 +93,17 @@ export function ClientProfileForm() {
         brand_voice: { tone: form.tone },
         always_use: parseList(form.alwaysUse),
         never_use: parseList(form.neverUse),
+        google_ads_customer_id: form.googleAdsCustomerId.trim() || null,
       };
 
-      if (clientId) {
-        const { data, error: updateError } = await supabase
-          .from("clients")
-          .update(payload)
-          .eq("id", clientId)
-          .select("*")
-          .single();
+      const { error: updateError } = await supabase
+        .from("clients")
+        .update(payload)
+        .eq("id", selectedClient.id);
 
-        if (updateError) throw updateError;
-        setClientId(data.id);
-      } else {
-        const { data, error: insertError } = await supabase
-          .from("clients")
-          .insert(payload)
-          .select("*")
-          .single();
+      if (updateError) throw updateError;
 
-        if (insertError) throw insertError;
-        setClientId(data.id);
-      }
-
+      await refresh();
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save client profile");
@@ -126,7 +115,7 @@ export function ClientProfileForm() {
   const inputClassName =
     "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-[13px] text-text outline-none transition-colors placeholder:text-text-4 focus:border-orange focus:ring-2 focus:ring-orange/15";
 
-  if (loading) {
+  if (clientsLoading || !selectedClient) {
     return (
       <div className="rounded-xl border border-border bg-surface p-8 text-[13px] text-text-3">
         Loading client profile...
@@ -134,17 +123,23 @@ export function ClientProfileForm() {
     );
   }
 
+  const hasGoogleAds = !!selectedClient.google_ads_customer_id;
+
   return (
     <div className="rounded-xl border border-border bg-surface p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-[15px] font-semibold text-text">Client Profile</h2>
           <p className="mt-1 text-[13px] text-text-3">
-            Brand context used across ASHI for copy, reports, and UTM tracking.
+            Brand context and Google Ads account used across ASHI for copy, reports, and UTM tracking.
           </p>
         </div>
-        <span className="inline-flex w-fit rounded-md bg-orange-pale px-2.5 py-1 text-[11px] font-semibold text-orange">
-          Primary client
+        <span
+          className={`inline-flex w-fit rounded-md px-2.5 py-1 text-[11px] font-semibold ${
+            hasGoogleAds ? "bg-green-pale text-green-text" : "bg-orange-pale text-orange"
+          }`}
+        >
+          {hasGoogleAds ? "Google Ads Linked" : "No Google Ads Account"}
         </span>
       </div>
 
@@ -197,6 +192,18 @@ export function ClientProfileForm() {
             type="text"
             value={form.currency}
             onChange={(event) => updateField("currency", event.target.value)}
+            className={inputClassName}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-[13px] font-medium text-text-2">
+            Google Ads Customer ID
+          </span>
+          <input
+            type="text"
+            value={form.googleAdsCustomerId}
+            onChange={(event) => updateField("googleAdsCustomerId", event.target.value)}
+            placeholder="e.g. 3203182617"
             className={inputClassName}
           />
         </label>
