@@ -130,8 +130,11 @@ export async function buildWeeklyReport(clientName: string, customerId: string):
   const searchTerms = await fetchTopSearchTerms(customer, start, end);
   const insightBullets = await generateInsightBullets(clientName, searchTerms);
 
-  const today = new Date();
-  const dateLabel = `${today.getDate()}/${today.getMonth() + 1}`;
+  const fmtLabel = (iso: string) => {
+    const d = new Date(`${iso}T00:00:00Z`);
+    return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+  };
+  const periodLabel = `${fmtLabel(start)} - ${fmtLabel(end)}`;
 
   const cpaLine =
     metrics.conversions > 0
@@ -139,7 +142,7 @@ export async function buildWeeklyReport(clientName: string, customerId: string):
       : `• Total spend: RM${Math.round(metrics.spend)} — no enquiries recorded this week`;
 
   const lines = [
-    `${clientName} Report - ${dateLabel}`,
+    `${clientName} Report - ${periodLabel}`,
     "",
     `• Your ad appeared ${metrics.impressions.toLocaleString()} times on Google`,
     `• ${metrics.clicks.toLocaleString()} people clicked on it`,
