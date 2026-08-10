@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import "./globals.css";
@@ -18,6 +18,23 @@ const dmMono = DM_Mono({
 export const metadata: Metadata = {
   title: "ASHI",
   description: "ASHI marketing intelligence platform",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ASHI",
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#E07000",
 };
 
 export default function RootLayout({

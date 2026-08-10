@@ -1,0 +1,23 @@
+{
+  "name": "ASHI",
+  "short_name": "ASHI",
+  "description": "ASHI marketing intelligence platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8EE",
+  "theme_color": "#E07000",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
